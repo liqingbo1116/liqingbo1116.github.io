@@ -1,0 +1,799 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=auto>
+
+
+
+<head>
+  <meta charset="UTF-8">
+
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/favicon.ico">
+  <link rel="icon" href="/img/favicon.ico">
+  
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="Kuma">
+  <meta name="keywords" content="">
+  
+    <meta name="description" content="1 前言个人体验DeepSeek-R1时可以采用ollama部署，操作过程比较简单，一键部署运行，但是这种方式的灵活性与可扩展性较低，可能无法与企业现有架构和工具链相匹配，因此企业中部署时通常不会采用这种方式 下面介绍一种生产可用的部署方式，基于vLLM&#x2F;SGLang部署DeepSeek-R1-1.5B及DeepSeek-R1-32B模型，并部署Open-WebUI测试与模型进行问答，测">
+<meta property="og:type" content="article">
+<meta property="og:title" content="基于vLLM与SGLang部署DeepSeek-r1-32B模型">
+<meta property="og:url" content="https://ikuma.top/2025/07/02/%E5%9F%BA%E4%BA%8EvLLM%E4%B8%8ESGLang%E9%83%A8%E7%BD%B2DeepSeek-r1-32B%E6%A8%A1%E5%9E%8B/index.html">
+<meta property="og:site_name" content="Kuma">
+<meta property="og:description" content="1 前言个人体验DeepSeek-R1时可以采用ollama部署，操作过程比较简单，一键部署运行，但是这种方式的灵活性与可扩展性较低，可能无法与企业现有架构和工具链相匹配，因此企业中部署时通常不会采用这种方式 下面介绍一种生产可用的部署方式，基于vLLM&#x2F;SGLang部署DeepSeek-R1-1.5B及DeepSeek-R1-32B模型，并部署Open-WebUI测试与模型进行问答，测">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://ikuma.top/2025/07/02/%E5%9F%BA%E4%BA%8EvLLM%E4%B8%8ESGLang%E9%83%A8%E7%BD%B2DeepSeek-r1-32B%E6%A8%A1%E5%9E%8B/%E6%98%BE%E5%8D%A1%E9%A9%B1%E5%8A%A8%E4%B8%8B%E8%BD%BD.png">
+<meta property="og:image" content="https://ikuma.top/2025/07/02/%E5%9F%BA%E4%BA%8EvLLM%E4%B8%8ESGLang%E9%83%A8%E7%BD%B2DeepSeek-r1-32B%E6%A8%A1%E5%9E%8B/%E7%BC%96%E8%BE%91%E8%BF%9E%E6%8E%A51.png">
+<meta property="og:image" content="https://ikuma.top/2025/07/02/%E5%9F%BA%E4%BA%8EvLLM%E4%B8%8ESGLang%E9%83%A8%E7%BD%B2DeepSeek-r1-32B%E6%A8%A1%E5%9E%8B/%E6%A8%A1%E5%9E%8B%E5%AF%B9%E8%AF%9D1.png">
+<meta property="article:published_time" content="2025-07-02T06:03:10.000Z">
+<meta property="article:modified_time" content="2025-10-30T03:37:55.423Z">
+<meta property="article:author" content="Kuma">
+<meta property="article:tag" content="LLM">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://ikuma.top/2025/07/02/%E5%9F%BA%E4%BA%8EvLLM%E4%B8%8ESGLang%E9%83%A8%E7%BD%B2DeepSeek-r1-32B%E6%A8%A1%E5%9E%8B/%E6%98%BE%E5%8D%A1%E9%A9%B1%E5%8A%A8%E4%B8%8B%E8%BD%BD.png">
+  
+  
+  
+  <title>基于vLLM与SGLang部署DeepSeek-r1-32B模型 - Kuma</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/c/font_1749284_5i9bdhy70f8.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/c/font_1736178_k526ubmyhba.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"ikuma.top","root":"/","version":"1.9.8","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":true,"follow_dnt":true,"baidu":"d25ac6011119aac895360f397ce5c28c","google":{"measurement_id":null},"tencent":{"sid":null,"cid":null},"leancloud":{"app_id":"7QpTYhxemKSg5l0Ht5ph2YxW-gzGzoHsz","app_key":"xwo5Ld78ha7n6rjd8rOGCWp8","server_url":null,"path":"window.location.pathname","ignore_local":false},"umami":{"src":null,"website_id":null,"domains":null,"start_time":"2024-01-01T00:00:00.000Z","token":null,"api_server":null}},"search_path":"/local-search.xml","include_content_in_search":true};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+  
+
+  
+    <!-- Baidu Analytics -->
+    <script async>
+      if (!Fluid.ctx.dnt) {
+        var _hmt = _hmt || [];
+        (function() {
+          var hm = document.createElement("script");
+          hm.src = "https://hm.baidu.com/hm.js?d25ac6011119aac895360f397ce5c28c";
+          var s = document.getElementsByTagName("script")[0];
+          s.parentNode.insertBefore(hm, s);
+        })();
+      }
+    </script>
+  
+
+  
+
+  
+
+  
+
+  
+    
+  
+
+
+
+  
+<meta name="generator" content="Hexo 7.3.0"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 70vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>Kuma</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/" target="_self">
+                <i class="iconfont icon-home-fill"></i>
+                <span>首页</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/" target="_self">
+                <i class="iconfont icon-archive-fill"></i>
+                <span>归档</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/" target="_self">
+                <i class="iconfont icon-category-fill"></i>
+                <span>分类</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/tags/" target="_self">
+                <i class="iconfont icon-tags-fill"></i>
+                <span>标签</span>
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/about/" target="_self">
+                <i class="iconfont icon-user-fill"></i>
+                <span>关于</span>
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              <i class="iconfont icon-search"></i>
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">
+              <i class="iconfont icon-dark" id="color-toggle-icon"></i>
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('/img/default.png') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="基于vLLM与SGLang部署DeepSeek-r1-32B模型"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2025-07-02 14:03" pubdate>
+          2025年7月2日 下午
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-chart"></i>
+        
+          2.1k 字
+        
+      </span>
+    
+
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-clock-fill"></i>
+        
+        
+        
+          18 分钟
+        
+      </span>
+    
+
+    
+    
+      
+        <span id="leancloud-page-views-container" class="post-meta" style="display: none">
+          <i class="iconfont icon-eye" aria-hidden="true"></i>
+          <span id="leancloud-page-views"></span> 次
+        </span>
+        
+      
+      
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <h1 id="seo-header">基于vLLM与SGLang部署DeepSeek-r1-32B模型</h1>
+            
+            
+              <div class="markdown-body">
+                
+                <h1 id="1-前言"><a href="#1-前言" class="headerlink" title="1 前言"></a>1 前言</h1><p>个人体验DeepSeek-R1时可以采用ollama部署，操作过程比较简单，一键部署运行，但是这种方式的灵活性与可扩展性较低，可能无法与企业现有架构和工具链相匹配，因此企业中部署时通常不会采用这种方式</p>
+<p>下面介绍一种生产可用的部署方式，基于vLLM&#x2F;SGLang部署DeepSeek-R1-1.5B及DeepSeek-R1-32B模型，并部署Open-WebUI测试与模型进行问答，测试模型可用性</p>
+<p>本文基于conda虚拟环境在Linux主机部署，基于环境隔离与复用性考虑，更加推荐容器部署方式，后续会尝试</p>
+<p>模型文件下载可以从huggingface或ModelScope：</p>
+<ul>
+<li><a target="_blank" rel="noopener" href="https://huggingface.co/models">huggingface</a>: 需要科学上网</li>
+<li><a target="_blank" rel="noopener" href="https://www.modelscope.cn/models">ModelScope</a>: 国内用户建议从ModelScope下载</li>
+</ul>
+<h1 id="2-安装nvidia驱动"><a href="#2-安装nvidia驱动" class="headerlink" title="2 安装nvidia驱动"></a>2 安装nvidia驱动</h1><p>环境说明</p>
+<figure class="highlight routeros"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs routeros">操作系统：ubuntu2204<br>显卡：nvidia A800<span class="hljs-number">*2</span><br></code></pre></td></tr></table></figure>
+
+<p>下载驱动</p>
+<p>Nvidia<a target="_blank" rel="noopener" href="https://www.nvidia.com/en-us/drivers/">官网</a>可以下载驱动，选择显卡型号、系统版本后就可以下载到驱动包</p>
+<p><img src="/2025/07/02/%E5%9F%BA%E4%BA%8EvLLM%E4%B8%8ESGLang%E9%83%A8%E7%BD%B2DeepSeek-r1-32B%E6%A8%A1%E5%9E%8B/%E6%98%BE%E5%8D%A1%E9%A9%B1%E5%8A%A8%E4%B8%8B%E8%BD%BD.png" srcset="/img/loading.gif" lazyload></p>
+<p>下载地址</p>
+<figure class="highlight apache"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs apache"><span class="hljs-attribute">https</span>://cn.download.nvidia.cn/tesla/<span class="hljs-number">570</span>.<span class="hljs-number">158</span>.<span class="hljs-number">01</span>/nvidia-driver-local-repo-ubuntu2204-<span class="hljs-number">570</span>.<span class="hljs-number">158</span>.<span class="hljs-number">01</span>_1.<span class="hljs-number">0</span>-<span class="hljs-number">1</span>_amd64.deb<br></code></pre></td></tr></table></figure>
+
+<p>安装驱动</p>
+<figure class="highlight sh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br></pre></td><td class="code"><pre><code class="hljs sh"><span class="hljs-comment">#安装驱动</span><br>dpkg -i nvidia-driver-local-repo-ubuntu2204-570.158.01_1.0-1_amd64.deb<br><span class="hljs-comment">#安装秘钥</span><br><span class="hljs-built_in">cp</span> /var/nvidia-driver-local-repo-ubuntu2204-570.158.01/nvidia-driver-local-32B90C93-keyring.gpg /usr/share/keyrings/<br><span class="hljs-comment">#查看可以安装的驱动</span><br>apt update<br>ubuntu-drivers devices<br><br><span class="hljs-comment"># ubuntu-drivers devices</span><br>ERROR:root:aplay <span class="hljs-built_in">command</span> not found<br>== /sys/devices/pci0000:97/0000:97:02.0/0000:98:00.0 ==<br>modalias : pci:v000010DEd000020F5sv000010DEsd00001799bc03sc02i00<br>vendor   : NVIDIA Corporation<br>driver   : nvidia-driver-535-server-open - distro non-free<br>driver   : nvidia-driver-570-server-open - distro non-free<br>driver   : nvidia-driver-550 - distro non-free<br>driver   : nvidia-driver-535-open - distro non-free<br>driver   : nvidia-driver-570 - third-party non-free recommended<br>driver   : nvidia-driver-570-open - third-party non-free<br>driver   : nvidia-driver-545 - distro non-free<br>driver   : nvidia-driver-550-open - distro non-free<br>driver   : nvidia-driver-535-server - distro non-free<br>driver   : nvidia-driver-545-open - distro non-free<br>driver   : nvidia-driver-570-server - distro non-free<br>driver   : nvidia-driver-535 - distro non-free<br>driver   : xserver-xorg-video-nouveau - distro free <span class="hljs-built_in">builtin</span><br><br><span class="hljs-comment">#安装驱动</span><br>apt -y install nvidia-driver-570<br><br><span class="hljs-comment">#查看GPU信息</span><br><span class="hljs-comment"># nvidia-smi</span><br>Mon Jun 30 08:14:06 2025       <br>+-----------------------------------------------------------------------------------------+<br>| NVIDIA-SMI 570.158.01             Driver Version: 570.158.01     CUDA Version: 12.8     |<br>|-----------------------------------------+------------------------+----------------------+<br>| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |<br>| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |<br>|                                         |                        |               MIG M. |<br>|=========================================+========================+======================|<br>|   0  NVIDIA A800 80GB PCIe          Off |   00000000:17:00.0 Off |                    0 |<br>| N/A   31C    P0             68W /  300W |       0MiB /  81920MiB |      1%      Default |<br>|                                         |                        |             Disabled |<br>+-----------------------------------------+------------------------+----------------------+<br>|   1  NVIDIA A800 80GB PCIe          Off |   00000000:98:00.0 Off |                    0 |<br>| N/A   29C    P0             69W /  300W |       0MiB /  81920MiB |      1%      Default |<br>|                                         |                        |             Disabled |<br>+-----------------------------------------+------------------------+----------------------+<br>                                                                                         <br>+-----------------------------------------------------------------------------------------+<br>| Processes:                                                                              |<br>|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |<br>|        ID   ID                                                               Usage      |<br>|=========================================================================================|<br>|  No running processes found                                                             |<br>+-----------------------------------------------------------------------------------------+<br><br></code></pre></td></tr></table></figure>
+
+<h1 id="3-部署Miniconda3环境"><a href="#3-部署Miniconda3环境" class="headerlink" title="3 部署Miniconda3环境"></a>3 部署Miniconda3环境</h1><p>下载部署脚本</p>
+<figure class="highlight sh"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs sh">wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh<br></code></pre></td></tr></table></figure>
+
+<p>安装脚本</p>
+<figure class="highlight sh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br></pre></td><td class="code"><pre><code class="hljs sh"><span class="hljs-built_in">chmod</span> +x Miniconda3-latest-Linux-x86_64.sh<br>./Miniconda3-latest-Linux-x86_64.sh<br><br><span class="hljs-comment">#交互式安装</span><br>In order to <span class="hljs-built_in">continue</span> the installation process, please review the license<br>agreement.<br>Please, press ENTER to <span class="hljs-built_in">continue</span><br>&gt;&gt;&gt; 	<span class="hljs-comment">#按ENTER浏览License</span><br>Do you accept the license terms? [<span class="hljs-built_in">yes</span>|no]<br>&gt;&gt;&gt; <br>Please answer <span class="hljs-string">&#x27;yes&#x27;</span> or <span class="hljs-string">&#x27;no&#x27;</span>:<span class="hljs-string">&#x27;</span><br><span class="hljs-string">&gt;&gt;&gt; yes	#yes回车同意接受License</span><br><span class="hljs-string"></span><br><span class="hljs-string">Miniconda3 will now be installed into this location:</span><br><span class="hljs-string">/root/miniconda3</span><br><span class="hljs-string"></span><br><span class="hljs-string">  - Press ENTER to confirm the location</span><br><span class="hljs-string">  - Press CTRL-C to abort the installation</span><br><span class="hljs-string">  - Or specify a different location below</span><br><span class="hljs-string"></span><br><span class="hljs-string">[/root/miniconda3] &gt;&gt;&gt; /usr/local/models/miniconda3	#默认会装到/root/miniconda3下，也可以自定义路径</span><br><span class="hljs-string"></span><br><span class="hljs-string">Do you wish to update your shell profile to automatically initialize conda?</span><br><span class="hljs-string">This will activate conda on startup and change the command prompt when activated.</span><br><span class="hljs-string">If you&#x27;</span>d prefer that conda<span class="hljs-string">&#x27;s base environment not be activated on startup,</span><br><span class="hljs-string">   run the following command when conda is activated:</span><br><span class="hljs-string"></span><br><span class="hljs-string">conda config --set auto_activate_base false</span><br><span class="hljs-string"></span><br><span class="hljs-string">You can undo this by running `conda init --reverse $SHELL`? [yes|no]</span><br><span class="hljs-string">[no] &gt;&gt;&gt; yes	#登录shell时自动激活conda，输入yes</span><br><span class="hljs-string"></span><br><span class="hljs-string">==&gt; For changes to take effect, close and re-open your current shell. &lt;==</span><br><span class="hljs-string"></span><br><span class="hljs-string">Thank you for installing Miniconda3!</span><br><span class="hljs-string"></span><br><span class="hljs-string">#重新登录shell生效</span><br><span class="hljs-string"></span><br><span class="hljs-string"># conda --version</span><br><span class="hljs-string">conda 25.5.1</span><br></code></pre></td></tr></table></figure>
+
+<h1 id="4-部署运行模型"><a href="#4-部署运行模型" class="headerlink" title="4 部署运行模型"></a>4 部署运行模型</h1><h2 id="4-1-方式1：vLLM运行模型"><a href="#4-1-方式1：vLLM运行模型" class="headerlink" title="4.1 方式1：vLLM运行模型"></a>4.1 方式1：vLLM运行模型</h2><p>创建虚拟化python环境（vllm运行环境）</p>
+<figure class="highlight sh"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs sh">conda create -p /usr/local/models/myenv python=3.13<br></code></pre></td></tr></table></figure>
+
+<p>激活环境</p>
+<figure class="highlight sh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs sh">(base) root@gpu:~# conda activate /usr/local/models/myenv<br><br><span class="hljs-comment">#注意前面的前缀会改变</span><br>(/usr/local/models/myenv) root@gpu:~# <br></code></pre></td></tr></table></figure>
+
+<p>配置pypi源：默认比较慢，修改为阿里云地址</p>
+<figure class="highlight sh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><code class="hljs sh"><span class="hljs-built_in">mkdir</span> ~/.pip<br><span class="hljs-built_in">cat</span> &gt; ~/.pip/pip.conf &lt;&lt;<span class="hljs-string">EOF</span><br><span class="hljs-string">[global]</span><br><span class="hljs-string">index-url = http://mirrors.aliyun.com/pypi/simple/</span><br><span class="hljs-string"></span><br><span class="hljs-string">[install]</span><br><span class="hljs-string">trusted-host=mirrors.aliyun.com</span><br><span class="hljs-string">EOF</span><br></code></pre></td></tr></table></figure>
+
+<p>安装依赖</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><code class="hljs bash"><span class="hljs-comment">###1.安装 PyTorch + CUDA 11.8</span><br>(/usr/local/models/myenv) root@gpu:~# pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118<br><span class="hljs-comment">#验证安装</span><br>python -c <span class="hljs-string">&quot;import torch; print(f&#x27;PyTorch版本: &#123;torch.__version__&#125;\nCUDA可用: &#123;torch.cuda.is_available()&#125;&#x27;)&quot;</span><br><br><span class="hljs-comment">###2.安装 Rust工具链</span><br><span class="hljs-comment">#2.1在线安装</span><br>curl --proto <span class="hljs-string">&#x27;=https&#x27;</span> --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y<br><br><span class="hljs-comment">#2.2离线安装</span><br>wget https://static.rust-lang.org/dist/rust-1.88.0-x86_64-unknown-linux-gnu.tar.xz<br><span class="hljs-built_in">cd</span> rust*<br>./install.sh --prefix=/usr/local --without=rust-docs <span class="hljs-comment"># 跳过文档以节省空间</span><br><br><span class="hljs-comment">#2.3验证安装</span><br>rustc --version<br>cargo --version<br><br><br><span class="hljs-comment">###3.安装cuda-toolkit</span><br>wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.1-1_all.deb<br>dpkg -i cuda-keyring_1.1-1_all.deb<br>apt update<br>apt install cuda-toolkit-12-2<br><span class="hljs-comment">#如果部署过程中还有报错，可能也需要装nvidia-cuda-toolkit</span><br>apt install nvidia-cuda-toolkit<br></code></pre></td></tr></table></figure>
+
+<p>安装modelscope、vllm模块</p>
+<figure class="highlight sh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><code class="hljs sh">(/usr/local/models/myenv) root@gpu:~# pip install modelscope vllm<br><br><span class="hljs-comment">#耗时较长</span><br>(/usr/local/models/myenv) root@gpu:~# pip list | egrep -i <span class="hljs-string">&quot;(vllm|modelscope)&quot;</span><br>modelscope                        1.27.1<br>vllm                              0.8.3<br></code></pre></td></tr></table></figure>
+
+<p>下载模型文件</p>
+<figure class="highlight sh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><code class="hljs sh"><span class="hljs-comment">###方式1：使用git下载：需要安装git-lfs包</span><br>apt install git-lfs<br><br><span class="hljs-comment">#下载到指定目录：计划测试部署1.5B与32B，因此下载两个模型</span><br><span class="hljs-built_in">mkdir</span> /usr/local/models/models<br><span class="hljs-built_in">cd</span> /usr/local/models/models<br>git <span class="hljs-built_in">clone</span> https://www.modelscope.cn/deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B.git<br>git <span class="hljs-built_in">clone</span> https://www.modelscope.cn/deepseek-ai/DeepSeek-R1-Distill-Qwen-32B.git<br><br><span class="hljs-comment">####方式2：使用modelscope下载</span><br><span class="hljs-comment">#通过环境变量方式指定目录，而后下载</span><br><span class="hljs-built_in">export</span> MODELSCOPE_CACHE=/usr/local/models/models<br>modelscope download --model deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B<br></code></pre></td></tr></table></figure>
+
+<p>运行模型</p>
+<figure class="highlight sh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br></pre></td><td class="code"><pre><code class="hljs sh">(/usr/local/models/myenv) root@gpu:~# VLLM_USE_MODELSCOPE=<span class="hljs-literal">true</span> vllm serve /usr/local/models/models/DeepSeek-R1-Distill-Qwen-1.5B --tensor-parallel-size 2 --max-model-len 32768 --gpu-memory-utilization 0.95 --dtype bfloat16 --served-model-name DeepSeek-R1-32B<br><br><span class="hljs-comment">#参数含义</span><br>--tensor-parallel-size 2 <span class="hljs-comment"># 张量并行度（=GPU数量）</span><br>--max-model-len 32768 <span class="hljs-comment"># 最大上下文长度</span><br>--gpu-memory-utilization 0.95 <span class="hljs-comment"># 显存利用率上限</span><br>--dtype bfloat16 <span class="hljs-comment">#指定模型精度</span><br><br><br><span class="hljs-comment">#模型启动检查</span><br><span class="hljs-comment">#日志显示启动成功</span><br>INFO:     Started server process [206740]<br>INFO:     Waiting <span class="hljs-keyword">for</span> application startup.<br>INFO:     Application startup complete.<br><br><span class="hljs-comment">#端口</span><br>(base) root@gpu:/usr/local/models/models# netstat -tnlp | grep 8000<br>tcp        0      0 0.0.0.0:8000            0.0.0.0:*               LISTEN      206740/python3.13<br><br><span class="hljs-comment">#查看GPU信息：发现显存使用率已经升上来了</span><br>(base) root@gpu:/usr/local/models/models# nvidia-smi<br>Tue Jul  1 15:52:22 2025       <br>+-----------------------------------------------------------------------------------------+<br>| NVIDIA-SMI 570.158.01             Driver Version: 570.158.01     CUDA Version: 12.8     |<br>|-----------------------------------------+------------------------+----------------------+<br>| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |<br>| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |<br>|                                         |                        |               MIG M. |<br>|=========================================+========================+======================|<br>|   0  NVIDIA A800 80GB PCIe          Off |   00000000:17:00.0 Off |                    0 |<br>| N/A   30C    P0             66W /  300W |   77879MiB /  81920MiB |      0%      Default |<br>|                                         |                        |             Disabled |<br>+-----------------------------------------+------------------------+----------------------+<br>|   1  NVIDIA A800 80GB PCIe          Off |   00000000:98:00.0 Off |                    0 |<br>| N/A   27C    P0             65W /  300W |   77879MiB /  81920MiB |      0%      Default |<br>|                                         |                        |             Disabled |<br>+-----------------------------------------+------------------------+----------------------+<br>                                                                                         <br>+-----------------------------------------------------------------------------------------+<br>| Processes:                                                                              |<br>|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |<br>|        ID   ID                                                               Usage      |<br>|=========================================================================================|<br>|    0   N/A  N/A          207341      C   ...l/models/myenv/bin/python3.13      77870MiB |<br>|    1   N/A  N/A          207358      C   ...l/models/myenv/bin/python3.13      77870MiB |<br>+-----------------------------------------------------------------------------------------+<br></code></pre></td></tr></table></figure>
+
+<h2 id="4-2-方式2：SGLang运行模型"><a href="#4-2-方式2：SGLang运行模型" class="headerlink" title="4.2 方式2：SGLang运行模型"></a>4.2 方式2：SGLang运行模型</h2><p>创建虚拟化python环境（sglang运行环境）</p>
+<figure class="highlight sh"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs sh">conda create -p /usr/local/models/sglang python=3.11<br></code></pre></td></tr></table></figure>
+
+<p>激活环境</p>
+<figure class="highlight sh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs sh">conda activate /usr/local/models/sglang<br><br><span class="hljs-comment">#注意前面的前缀会改变</span><br>(/usr/local/models/sglang) root@gpu:~#<br></code></pre></td></tr></table></figure>
+
+<p>安装SGLang模块</p>
+<figure class="highlight sh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><code class="hljs sh"><span class="hljs-comment">#安装依赖</span><br>(/usr/local/models/sglang) root@gpu:~# apt install nvidia-cuda-toolkit<br><br><br><span class="hljs-comment">#安装SGLang</span><br>(/usr/local/models/sglang) root@gpu:~# pip install sglang[all]<br></code></pre></td></tr></table></figure>
+
+<p>注意：方式1中已经下载过模型，此处不再下载</p>
+<p>运行模型</p>
+<figure class="highlight sh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br></pre></td><td class="code"><pre><code class="hljs sh"><span class="hljs-comment">#注意: 确保CUDA_HOME环境变量已设置，如果没有设置会报错！！！！</span><br>In file included from /usr/include/crt/math_functions.h:9075,<br>                 from /usr/include/crt/common_functions.h:303,<br>                 from /usr/include/cuda_runtime.h:115,<br>                 from &lt;command-line&gt;:<br>/usr/include/c++/11/cmath:45:15: fatal error: math.h: No such file or directory<br>   45 | <span class="hljs-comment">#include_next &lt;math.h&gt;</span><br>      |               ^~~~~~~~<br>compilation terminated.<br>In file included from /usr/include/crt/math_functions.h:9075,<br>                 from /usr/include/crt/common_functions.h:303,<br>                 from /usr/include/cuda_runtime.h:115,<br>                 from &lt;command-line&gt;:<br>/usr/include/c++/11/cmath:45:15: fatal error: math.h: No such file or directory<br>   45 | <span class="hljs-comment">#include_next &lt;math.h&gt;</span><br>      |               ^~~~~~~~<br>compilation terminated.<br>fatal   : Could not open input file /tmp/tmpxft_0003aaba_00000000-7_batch_prefill_ragged_kernel_mask_2.cpp1.ii<br>ninja: build stopped: subcommand failed.<br><br>Possible solutions:<br>1. <span class="hljs-built_in">set</span> --mem-fraction-static to a smaller value (e.g., 0.8 or 0.7)<br>2. <span class="hljs-built_in">set</span> --cuda-graph-max-bs to a smaller value (e.g., 16)<br>3. <span class="hljs-built_in">disable</span> torch compile by not using --enable-torch-compile<br>4. <span class="hljs-built_in">disable</span> CUDA graph by --disable-cuda-graph. (Not recommended. Huge performance loss)<br>Open an issue on GitHub https://github.com/sgl-project/sglang/issues/new/choose <br><br><br>[2025-07-02 11:51:47] Received sigquit from a child process. It usually means the child failed.<br>[2025-07-02 11:51:47] Received sigquit from a child process. It usually means the child failed.<br>Killed<br><br><br><span class="hljs-comment">#设置环境变量</span><br><span class="hljs-built_in">echo</span> <span class="hljs-variable">$CUDA_HOME</span><br><span class="hljs-comment">#设置方式</span><br><span class="hljs-comment">#设置方式1</span><br><span class="hljs-built_in">export</span> CUDA_HOME=/usr/local/cuda-12.2<br><span class="hljs-comment">#设置方式2</span><br><span class="hljs-built_in">echo</span> <span class="hljs-string">&quot;export CUDA_HOME=/usr/local/cuda-12.2&quot;</span> &gt;&gt; ~/.bashrc<br><span class="hljs-built_in">source</span> ~/.bashrc<br><br><br><span class="hljs-comment">#启动</span><br>SGLANG_USE_MODELSCOPE=<span class="hljs-literal">true</span> python3 -m sglang.launch_server --model /usr/local/models/models/DeepSeek-R1-Distill-Qwen-32B --trust-remote-code --tp 2 --dtype bfloat16  --api-key 123456 --served-model-name DeepSeek-R1-32B --mem-fraction-static 0.9<br><br><span class="hljs-comment">#参数含义</span><br>--model <span class="hljs-comment">#指定模型</span><br>--trust-remote-code <span class="hljs-comment">#信任远程代码</span><br>--tp 2 <span class="hljs-comment"># 张量并行度（=GPU数量）</span><br>--dtype bfloat16 <span class="hljs-comment">#指定模型精度</span><br>--api-key 123456 <span class="hljs-comment">#API密钥</span><br>--served-model-name DeepSeek-R1-32B <span class="hljs-comment">#模型名</span><br><br><span class="hljs-comment">#模型启动检查</span><br><span class="hljs-comment">#日志显示启动成功</span><br>[2025-07-02 11:53:43] INFO:     Started server process [240755]<br>[2025-07-02 11:53:43] INFO:     Waiting <span class="hljs-keyword">for</span> application startup.<br>[2025-07-02 11:53:43] INFO:     Application startup complete.<br>[2025-07-02 11:53:43] INFO:     Uvicorn running on http://127.0.0.1:30000 (Press CTRL+C to quit)<br>[2025-07-02 11:53:44] INFO:     127.0.0.1:55666 - <span class="hljs-string">&quot;GET /get_model_info HTTP/1.1&quot;</span> 200 OK<br>[2025-07-02 11:53:49] INFO:     127.0.0.1:55680 - <span class="hljs-string">&quot;POST /generate HTTP/1.1&quot;</span> 200 OK<br>[2025-07-02 11:53:49] The server is fired up and ready to roll!<br><br><span class="hljs-comment">#端口</span><br>(base) root@gpu:/usr/local/models/models# netstat -tnlp | grep 30000<br>tcp        0      0 127.0.0.1:30000         0.0.0.0:*               LISTEN      240755/python3<br><br><span class="hljs-comment">#查看GPU信息：发现显存使用率已经升上来了</span><br>(base) root@gpu:/usr/local/models/models# nvidia-smi<br>Tue Jul  1 15:52:22 2025       <br>+-----------------------------------------------------------------------------------------+<br>| NVIDIA-SMI 570.158.01             Driver Version: 570.158.01     CUDA Version: 12.8     |<br>|-----------------------------------------+------------------------+----------------------+<br>| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |<br>| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |<br>|                                         |                        |               MIG M. |<br>|=========================================+========================+======================|<br>|   0  NVIDIA A800 80GB PCIe          Off |   00000000:17:00.0 Off |                    0 |<br>| N/A   30C    P0             66W /  300W |   77879MiB /  81920MiB |      0%      Default |<br>|                                         |                        |             Disabled |<br>+-----------------------------------------+------------------------+----------------------+<br>|   1  NVIDIA A800 80GB PCIe          Off |   00000000:98:00.0 Off |                    0 |<br>| N/A   27C    P0             65W /  300W |   77879MiB /  81920MiB |      0%      Default |<br>|                                         |                        |             Disabled |<br>+-----------------------------------------+------------------------+----------------------+<br>                                                                                         <br>+-----------------------------------------------------------------------------------------+<br>| Processes:                                                                              |<br>|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |<br>|        ID   ID                                                               Usage      |<br>|=========================================================================================|<br>|    0   N/A  N/A          207341      C   ...l/models/myenv/bin/python3.13      77870MiB |<br>|    1   N/A  N/A          207358      C   ...l/models/myenv/bin/python3.13      77870MiB |<br>+-----------------------------------------------------------------------------------------+<br></code></pre></td></tr></table></figure>
+
+
+
+<h1 id="5-部署open-webui"><a href="#5-部署open-webui" class="headerlink" title="5 部署open-webui"></a>5 部署open-webui</h1><p>创建虚拟化python环境（open-webui运行环境）</p>
+<figure class="highlight sh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs sh"><span class="hljs-comment">#注意：python版本需要为3.11/3.12</span><br>conda create -p /usr/local/models/open-webui python=3.11<br></code></pre></td></tr></table></figure>
+
+<p>激活环境</p>
+<figure class="highlight sh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs sh">conda activate /usr/local/models/open-webui<br><br><span class="hljs-comment">#注意前面的前缀会改变</span><br>(/usr/local/models/open-webui) root@gpu:~# <br></code></pre></td></tr></table></figure>
+
+<p>安装open-webui</p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs ruby">(<span class="hljs-regexp">/usr/local</span><span class="hljs-regexp">/models/open</span>-webui) root<span class="hljs-variable">@gpu</span><span class="hljs-symbol">:~</span><span class="hljs-comment"># pip install open-webui</span><br></code></pre></td></tr></table></figure>
+
+<p>启动open-webui</p>
+<figure class="highlight sh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs sh">(/usr/local/models/open-webui) root@gpu:~# open-webui serve<br><br><span class="hljs-comment">#确认端口</span><br>(base) root@gpu:/usr/local/models/models# netstat -tnlp | grep 8080<br>tcp        0      0 0.0.0.0:8080            0.0.0.0:*               LISTEN      212252/python3.11<br></code></pre></td></tr></table></figure>
+
+<p>访问页面</p>
+<p><a target="_blank" rel="noopener" href="http://127.0.0.1:8080/%EF%BC%8C%E8%AE%BE%E7%BD%AE%E5%AF%86%E7%A0%81%E5%90%8E%E5%8F%AF%E4%BB%A5%E7%99%BB%E5%BD%95">http://127.0.0.1:8080/，设置密码后可以登录</a></p>
+<p>配置模型连接</p>
+<p>依次点击：管理员面板–设置–外部连接–管理OpenAI API连接–编辑连接（秘钥：SGLang支持，vllm部署不支持）</p>
+<figure class="highlight dts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs dts"><span class="hljs-symbol">URL:</span> http:<span class="hljs-comment">//127.0.0.1:8000/v1</span><br>秘钥: <span class="hljs-number">123456</span><br></code></pre></td></tr></table></figure>
+
+<p><img src="/2025/07/02/%E5%9F%BA%E4%BA%8EvLLM%E4%B8%8ESGLang%E9%83%A8%E7%BD%B2DeepSeek-r1-32B%E6%A8%A1%E5%9E%8B/%E7%BC%96%E8%BE%91%E8%BF%9E%E6%8E%A51.png" srcset="/img/loading.gif" lazyload></p>
+<p>首页可以选择到模型，并进行对话测试</p>
+<p><img src="/2025/07/02/%E5%9F%BA%E4%BA%8EvLLM%E4%B8%8ESGLang%E9%83%A8%E7%BD%B2DeepSeek-r1-32B%E6%A8%A1%E5%9E%8B/%E6%A8%A1%E5%9E%8B%E5%AF%B9%E8%AF%9D1.png" srcset="/img/loading.gif" lazyload></p>
+
+                
+              </div>
+            
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+    <div class="post-meta mr-3 d-flex align-items-center">
+      <i class="iconfont icon-category"></i>
+      
+
+<span class="category-chains">
+  
+  
+    
+      <span class="category-chain">
+        
+  <a href="/categories/LLM/" class="category-chain-item">LLM</a>
+  
+  
+    <span>></span>
+    
+  <a href="/categories/LLM/%E6%A8%A1%E5%9E%8B%E9%83%A8%E7%BD%B2/" class="category-chain-item">模型部署</a>
+  
+  
+
+  
+
+      </span>
+    
+  
+</span>
+
+    </div>
+  
+  
+    <div class="post-meta">
+      <i class="iconfont icon-tags"></i>
+      
+        <a href="/tags/LLM/" class="print-no-link">#LLM</a>
+      
+    </div>
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>基于vLLM与SGLang部署DeepSeek-r1-32B模型</div>
+      <div>https://ikuma.top/2025/07/02/基于vLLM与SGLang部署DeepSeek-r1-32B模型/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>作者</div>
+          <div>Kuma</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>发布于</div>
+          <div>2025年7月2日</div>
+        </div>
+      
+      
+      
+        <div class="license-meta-item">
+          <div>许可协议</div>
+          <div>
+            
+              
+              
+                <a class="print-no-link" target="_blank" href="https://creativecommons.org/licenses/by/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="BY - 署名">
+                    <i class="iconfont icon-cc-by"></i>
+                  </span>
+                </a>
+              
+            
+          </div>
+        </div>
+      
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2024/08/12/k8s%E9%9B%86%E7%BE%A4%E6%9B%B4%E6%96%B0%E8%AF%81%E4%B9%A6/" title="k8s集群更新证书">
+                        <span class="hidden-mobile">k8s集群更新证书</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header">
+    <i class="iconfont icon-list"></i>
+    <span>目录</span>
+  </p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+    <div class="footer-content">
+       <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+    </div>
+  
+  
+    <div class="statistics">
+  
+  
+
+  
+    
+      <span id="leancloud-site-pv-container" style="display: none">
+        总访问量 
+        <span id="leancloud-site-pv"></span>
+         次
+      </span>
+    
+    
+      <span id="leancloud-site-uv-container" style="display: none">
+        总访客数 
+        <span id="leancloud-site-uv"></span>
+         人
+      </span>
+    
+    
+
+  
+
+</div>
+
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.4/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.20.1/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init(Object.assign({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      scrollSmooth    : true,
+      includeTitleTags: true,
+      headingsOffset  : -boardTop,
+    }, CONFIG.toc));
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('tocbot' in window) {
+        tocbot.refresh();
+        var toc = jQuery('#toc');
+        if (toc.length === 0 || !tocbot) {
+          return;
+        }
+        if (toc.find('.toc-list-item').length > 0) {
+          toc.css('visibility', 'visible');
+        }
+      }
+    });
+  });
+</script>
+
+
+  <script src=https://lib.baomitu.com/clipboard.js/2.0.11/clipboard.min.js></script>
+
+  <script>Fluid.plugins.codeWidget();</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/5.0.0/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('anchors' in window) {
+        anchors.removeAll();
+        var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+        var res = [];
+        for (var item of el) {
+          res.push('.markdown-body > ' + item.trim());
+        }
+        if (CONFIG.anchorjs.placement === 'left') {
+          anchors.options.class = 'anchorjs-link-left';
+        }
+        anchors.add(res.join(', '));
+      }
+    });
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  <script defer src="/js/leancloud.js" ></script>
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">博客在允许 JavaScript 运行的环境下浏览效果更佳</div>
+  </noscript>
+</body>
+</html>
